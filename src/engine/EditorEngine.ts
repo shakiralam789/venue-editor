@@ -563,7 +563,6 @@ export class EditorEngine {
             after: { start: this.wallLive.wall.start, end: this.wallLive.wall.end, thickness: this.wallLive.wall.thickness, height: this.wallLive.wall.height }
           });
         }
-        this.renderer.clearOverlay();
         break;
       }
       case "openingDrag": {
@@ -578,7 +577,6 @@ export class EditorEngine {
             after: { tOffset: t, width: op.width, swing: op.swing }
           });
         }
-        this.renderer.clearOverlay();
         break;
       }
       case "drawRect": {
@@ -612,10 +610,7 @@ export class EditorEngine {
   };
 
   private commitTransform(): void {
-    if (!this.moved) {
-      this.renderer.clearOverlay();
-      return;
-    }
+    if (!this.moved) return;
     const changes: ObjectTransformChange[] = [...this.liveObjects.keys()].map((id) => {
       const o = this.liveObjects.get(id)!;
       const before = this.initialStates.get(id) ?? {
@@ -633,7 +628,6 @@ export class EditorEngine {
     if (changes.length > 0) {
       this.store.dispatch({ kind: "TRANSFORM_OBJECTS", changes });
     }
-    this.renderer.clearOverlay();
   }
 
   private commitCamera(cam: Camera): void {
