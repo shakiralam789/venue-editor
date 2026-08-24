@@ -24,6 +24,8 @@ export type ToolType =
 
 export type SyncStatus = "idle" | "saving" | "saved" | "error";
 
+export type ViewMode = "2d" | "3d";
+
 interface CoalesceState {
   key: string;
   ts: number;
@@ -44,11 +46,13 @@ interface EditorState {
   lastSavedAt?: number;
   _dirty: boolean;
   _coalesce: CoalesceState | null;
+  viewMode: ViewMode;
 
   initVenue: (venue: Venue) => void;
   setTool: (tool: ToolType) => void;
   setActiveObjectType: (type: ObjectType) => void;
   setCamera: (camera: Camera) => void;
+  setViewMode: (mode: ViewMode) => void;
 
   setSelection: (targets: SelectionTarget[]) => void;
   addToSelection: (targets: SelectionTarget[]) => void;
@@ -176,6 +180,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     sync: "idle",
     _dirty: false,
     _coalesce: null,
+    viewMode: "2d",
 
     initVenue(venue) {
       set({ venue, selection: [], past: [], future: [], sync: "idle", _dirty: false });
@@ -190,6 +195,9 @@ export const useEditorStore = create<EditorState>((set, get) => {
     },
     setCamera(camera) {
       set({ camera });
+    },
+    setViewMode(mode) {
+      set({ viewMode: mode });
     },
 
     setSelection(targets) {

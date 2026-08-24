@@ -12,6 +12,7 @@ import { PropertiesPanel } from "@/ui/PropertiesPanel";
 import { TopControls } from "@/ui/TopControls";
 import { ZoomControls } from "@/ui/ZoomControls";
 import { StatusBar } from "@/ui/StatusBar";
+import { Preview3D } from "@/ui/Preview3D";
 
 const TOOL_KEYS: Record<string, any> = {
   v: "select",
@@ -35,6 +36,8 @@ export default function Editor() {
   const camera = useEditorStore((s) => s.camera);
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const venue = useEditorStore((s) => s.venue);
 
   useEffect(() => {
     let disposed = false;
@@ -56,6 +59,8 @@ export default function Editor() {
       const ns = useEditorStore.getState();
       renderer.setCamera(ns.camera);
       renderer.syncVenue(ns.venue);
+      renderer.fitToContent(ns.venue);
+      ns.setCamera(renderer.camera);
       renderer.setSelection(ns.selection, ns.venue);
       setReady(true);
     });
@@ -218,14 +223,19 @@ export default function Editor() {
               Initializing renderer…
             </div>
           )}
-          <ZoomControls
-            scale={camera.scale}
-            onZoomIn={() => zoomBy(1.2)}
-            onZoomOut={() => zoomBy(1 / 1.2)}
-            onFit={zoomToFit}
-            onReset={resetView}
-          />
-          <StatusBar measure={measure} />
+          {ready && viewMode === "3d" && <Preview3D venue={venue} />}
+          {ready && viewMode === "2d" && (
+            <>
+              <ZoomControls
+                scale={camera.scale}
+                onZoomIn={() => zoomBy(1.2)}
+                onZoomOut={() => zoomBy(1 / 1.2)}
+                onFit={zoomToFit}
+                onReset={resetView}
+              />
+              <StatusBar measure={measure} />
+            </>
+          )}
         </div>
         <PropertiesPanel />
       </div>

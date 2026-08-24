@@ -36,7 +36,8 @@ type IconName =
   | "backward"
   | "save"
   | "retry"
-  | "warn";
+  | "warn"
+  | "cube";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   select: <path d="M4 3l15 7-6 2-2 6-7-15z" />,
@@ -74,7 +75,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   backward: <path d="M9 9h6v6H9zM11 4h9v16h-9z" />,
   save: <path d="M5 3h12l4 4v14H5zM8 3v6h8V3M8 21v-7h8v7" />,
   retry: <path d="M21 12a9 9 0 11-3-6.7M21 4v5h-5" />,
-  warn: <path d="M12 3l9 16H3zM12 10v4M12 17v.5" />
+  warn: <path d="M12 3l9 16H3zM12 10v4M12 17v.5" />,
+  cube: <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zM12 3v9m0 0l8-4.5M12 12l-8-4.5M12 12v9" />
 };
 
 export function Icon({

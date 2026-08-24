@@ -15,6 +15,8 @@ export const TopControls: React.FC = () => {
   const canRedo = useEditorStore((s) => s.future.length > 0);
   const sync = useEditorStore((s) => s.sync);
   const retrySave = useEditorStore((s) => s.retrySave);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
 
   const simulateFailure = () => {
     const p = useEditorStore.getState().persistence as unknown as { failNext?: () => void };
@@ -68,6 +70,19 @@ export const TopControls: React.FC = () => {
       </div>
 
       <div className="flex-1" />
+
+      <button
+        onClick={() => setViewMode(viewMode === "3d" ? "2d" : "3d")}
+        className={`flex items-center gap-1.5 h-8 px-3 rounded text-sm transition-colors ${
+          viewMode === "3d"
+            ? "bg-editor-accent/20 text-editor-accent"
+            : "text-editor-muted hover:bg-editor-panel2 hover:text-editor-text"
+        }`}
+        title="Toggle 3D preview"
+      >
+        <Icon name="cube" size={15} />
+        {viewMode === "3d" ? "2D" : "3D"}
+      </button>
 
       {sync === "error" && (
         <button

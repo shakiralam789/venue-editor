@@ -15,12 +15,14 @@
     "pixi.js": "8.2.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "three": "^0.160.1",
     "zustand": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "@types/three": "^0.160.0",
     "autoprefixer": "10.4.19",
     "postcss": "8.4.39",
     "tailwindcss": "3.4.6",
