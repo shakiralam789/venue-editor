@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { Venue, VenueObject, Wall } from "@/model/types";
+import type { Venue, VenueObject, Wall, WallOpening } from "@/model/types";
 import { TYPE_TO_DEFINITION } from "@/model/objectDefs";
 
 function contentBounds(venue: Venue) {
@@ -67,27 +67,120 @@ function buildObjectMesh(obj: VenueObject): THREE.Object3D {
 }
 
 function buildWallMesh(wall: Wall): THREE.Object3D {
+  const group = new THREE.Group();
   const dx = wall.end.x - wall.start.x;
   const dy = wall.end.y - wall.start.y;
   const len = Math.hypot(dx, dy) || 0.01;
   const th = Math.max(0.05, wall.thickness);
   const h = Math.max(0.1, wall.height || 3);
+  const angle = Math.atan2(dy, dx);
+  const cx = (wall.start.x + wall.end.x) / 2;
+  const cy = (wall.start.y + wall.end.y) / 2;
+  group.position.set(cx, 0, -cy);
+  group.rotation.y = angle;
 
-  const geo = new THREE.BoxGeometry(len, h, th);
   const mat = new THREE.MeshStandardMaterial({
     color: toColor(wall.style.fill, "#6f8aa6"),
     roughness: 0.9,
     metalness: 0.05
   });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = h / 2;
+
+  const gaps = wall.openings
+    .map((op) => {
+      const half = (Math.max(0.1, op.width) / 2) / len;
+      return [Math.min(1, Math.max(0, op.tOffset - half)), Math.min(1, Math.max(0, op.tOffset + half))] as [number, number];
+    })
+    .sort((a, b) => a[0] - b[0]);
+
+  let cursor = 0;
+  for (const [a, b] of gaps) {
+    if (a > cursor) {
+      const segLen = len * (a - cursor);
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(segLen, h, th), mat);
+      const midT = (cursor + a) / 2;
+      seg.position.set(len * midT - len / 2, h / 2, 0);
+      group.add(seg);
+    }
+    cursor = Math.max(cursor, b);
+  }
+  if (cursor < 1) {
+    const segLen = len * (1 - cursor);
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(segLen, h, th), mat);
+    const midT = (cursor + 1) / 2;
+    seg.position.set(len * midT - len / 2, h / 2, 0);
+    group.add(seg);
+  }
+
+  return group;
+}
+
+function box(w: number, h: number, d: number, mat: THREE.Material): THREE.Mesh {
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+}
+
+function buildOpeningMesh(wall: Wall, op: WallOpening): THREE.Object3D {
+  const dx = wall.end.x - wall.start.x;
+  const dy = wall.end.y - wall.start.y;
+  const len = Math.hypot(dx, dy) || 0.01;
+  const th = Math.max(0.05, wall.thickness);
+  const wallH = Math.max(0.1, wall.height || 3);
+  const w = Math.max(0.1, op.width);
+  const angle = Math.atan2(dy, dx);
+  const t = Math.min(1, Math.max(0, op.tOffset));
+  const cx = wall.start.x + dx * t;
+  const cy = wall.start.y + dy * t;
 
   const group = new THREE.Group();
-  group.add(mesh);
-  const cx = (wall.start.x + wall.end.x) / 2;
-  const cy = (wall.start.y + wall.end.y) / 2;
   group.position.set(cx, 0, -cy);
-  group.rotation.y = Math.atan2(dy, dx);
+  group.rotation.y = angle;
+
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xe6e8ec, roughness: 0.55, metalness: 0.05 });
+  const jambW = Math.min(0.12, w * 0.12);
+
+  if (op.type === "window") {
+    const paneH = Math.min(1.3, wallH * 0.5);
+    const sillY = Math.min(wallH * 0.5, 0.95);
+    const topY = sillY + paneH;
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: toColor(op.style.fill, "#8fc4ff"),
+      transparent: true,
+      opacity: 0.32,
+      roughness: 0.05,
+      metalness: 0.15
+    });
+
+    group.add(box(jambW, paneH + 0.18, th, frameMat).translateX(-w / 2 + jambW / 2).translateY(sillY + paneH / 2));
+    group.add(box(jambW, paneH + 0.18, th, frameMat).translateX(w / 2 - jambW / 2).translateY(sillY + paneH / 2));
+    group.add(box(w, 0.1, th, frameMat).translateY(sillY + 0.05));
+    group.add(box(w, 0.1, th, frameMat).translateY(topY + 0.05));
+    group.add(box(w - 2 * jambW, paneH, 0.02, glassMat).translateY(sillY + paneH / 2));
+    group.add(box(0.04, paneH, 0.05, frameMat).translateY(sillY + paneH / 2));
+    group.add(box(w - 2 * jambW, 0.04, 0.05, frameMat).translateY(sillY + paneH / 2));
+  } else {
+    const leafH = wallH - 0.12;
+    const leafW = w - 2 * jambW;
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: toColor(op.style.fill, "#9a6630"),
+      roughness: 0.65,
+      metalness: 0.05
+    });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd2, roughness: 0.3, metalness: 0.85 });
+
+    group.add(box(jambW, wallH, th, frameMat).translateX(-w / 2 + jambW / 2).translateY(wallH / 2));
+    group.add(box(jambW, wallH, th, frameMat).translateX(w / 2 - jambW / 2).translateY(wallH / 2));
+    group.add(box(w, 0.12, th, frameMat).translateY(wallH - 0.06));
+
+    const hinge = new THREE.Group();
+    hinge.position.set(-w / 2 + jambW, 0.06, 0);
+    hinge.rotation.y = -0.5;
+    const leaf = box(leafW, leafH, 0.05, leafMat);
+    leaf.position.set(leafW / 2, leafH / 2, 0);
+    hinge.add(leaf);
+    const handle = box(0.05, 0.05, 0.1, metalMat);
+    handle.position.set(leafW - 0.07, leafH * 0.5, 0.07);
+    hinge.add(handle);
+    group.add(hinge);
+  }
   return group;
 }
 
@@ -209,6 +302,9 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     for (const w of venue.walls) {
       if (w.hidden) continue;
       content.add(buildWallMesh(w));
+      for (const op of w.openings) {
+        content.add(buildOpeningMesh(w, op));
+      }
     }
     for (const o of venue.objects) {
       if (o.hidden) continue;
