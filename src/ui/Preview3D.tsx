@@ -8,6 +8,7 @@ import { TYPE_TO_DEFINITION } from "@/model/objectDefs";
 import { useEditorStore } from "@/state/store";
 import { createOpening } from "@/model/factory";
 import { projectPointOnSegment } from "@/lib/geometry";
+import { buildModel } from "@/renderer/three/modelAssets";
 
 interface SavedCamera {
   px: number;
@@ -63,20 +64,29 @@ function buildObjectMesh(obj: VenueObject): THREE.Object3D {
   const group = new THREE.Group();
   const isOverlay = (d3?.material ?? "") === "overlay" || (d3?.material ?? "") === "paint";
 
-  const geo = new THREE.BoxGeometry(w, h, d);
-  const mat = new THREE.MeshStandardMaterial({
-    color: toColor(obj.style.fill),
-    roughness: 0.85,
-    metalness: (d3?.material ?? "") === "metal" ? 0.6 : 0.05,
-    transparent: isOverlay,
-    opacity: isOverlay ? 0.35 : obj.style.fillOpacity ?? 1
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.y = h / 2;
-  group.add(mesh);
+  if (!isOverlay) {
+    const model = buildModel(d3?.model, w, d, h);
+    if (model) {
+      group.add(model);
+    }
+  }
 
-  group.position.set(obj.position.x, 0, -obj.position.y);
-  group.rotation.y = obj.rotation;
+  if (group.children.length === 0) {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mat = new THREE.MeshStandardMaterial({
+      color: toColor(obj.style.fill),
+      roughness: 0.85,
+      metalness: (d3?.material ?? "") === "metal" ? 0.6 : 0.05,
+      transparent: isOverlay,
+      opacity: isOverlay ? 0.35 : obj.style.fillOpacity ?? 1
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.y = h / 2;
+    group.add(mesh);
+  }
+
+  group.position.set(obj.position.x, 0, obj.position.y);
+  group.rotation.y = -obj.rotation * (Math.PI / 180);
   return group;
 }
 
@@ -87,10 +97,10 @@ function buildWallMesh(wall: Wall): THREE.Object3D {
   const len = Math.hypot(dx, dy) || 0.01;
   const th = Math.max(0.05, wall.thickness);
   const h = Math.max(0.1, wall.height || 3);
-  const angle = Math.atan2(dy, dx);
+  const angle = Math.atan2(-dy, dx);
   const cx = (wall.start.x + wall.end.x) / 2;
   const cy = (wall.start.y + wall.end.y) / 2;
-  group.position.set(cx, 0, -cy);
+  group.position.set(cx, 0, cy);
   group.rotation.y = angle;
 
   const mat = new THREE.MeshStandardMaterial({
@@ -139,13 +149,13 @@ function buildOpeningMesh(wall: Wall, op: WallOpening): THREE.Object3D {
   const th = Math.max(0.05, wall.thickness);
   const wallH = Math.max(0.1, wall.height || 3);
   const w = Math.max(0.1, op.width);
-  const angle = Math.atan2(dy, dx);
+  const angle = Math.atan2(-dy, dx);
   const t = Math.min(1, Math.max(0, op.tOffset));
   const cx = wall.start.x + dx * t;
   const cy = wall.start.y + dy * t;
 
   const group = new THREE.Group();
-  group.position.set(cx, 0, -cy);
+  group.position.set(cx, 0, cy);
   group.rotation.y = angle;
 
   const frameMat = new THREE.MeshStandardMaterial({ color: 0xe6e8ec, roughness: 0.55, metalness: 0.05 });
@@ -236,10 +246,10 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     const cy = (bounds.minY + bounds.maxY) / 2;
     const span = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 5);
 
-    camera.position.set(cx - span * 0.4, span * 0.9, -cy + span * 0.9);
+    camera.position.set(cx - span * 0.4, span * 0.9, cy + span * 0.9);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(cx, 0, -cy);
+    controls.target.set(cx, 0, cy);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI / 2.05;
     if (savedCamera) {
@@ -264,7 +274,7 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.65));
     const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(cx + span, span * 1.5, -cy + span);
+    dir.position.set(cx + span, span * 1.5, cy + span);
     scene.add(dir);
 
     const floorSize = span + 20;
@@ -273,11 +283,11 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
       new THREE.MeshStandardMaterial({ color: 0x161a21, roughness: 1 })
     );
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(cx, -0.01, -cy);
+    floor.position.set(cx, -0.01, cy);
     scene.add(floor);
 
     const grid = new THREE.GridHelper(floorSize, Math.max(10, Math.round(floorSize / 2)), 0x2a3340, 0x20262f);
-    grid.position.set(cx, 0, -cy);
+    grid.position.set(cx, 0, cy);
     scene.add(grid);
 
     const content = new THREE.Group();
@@ -329,7 +339,7 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
       }
       if (!wallId) return;
       const p = hits[0].point;
-      const world = { x: p.x, y: -p.z };
+      const world = { x: p.x, y: p.z };
       const wall = useEditorStore.getState().venue.walls.find((w) => w.id === wallId);
       if (!wall) return;
       const proj = projectPointOnSegment(world, wall.start, wall.end);
