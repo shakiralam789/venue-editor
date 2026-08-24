@@ -5,6 +5,20 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Venue, VenueObject, Wall, WallOpening } from "@/model/types";
 import { TYPE_TO_DEFINITION } from "@/model/objectDefs";
+import { useEditorStore } from "@/state/store";
+import { createOpening } from "@/model/factory";
+import { projectPointOnSegment } from "@/lib/geometry";
+
+interface SavedCamera {
+  px: number;
+  py: number;
+  pz: number;
+  tx: number;
+  ty: number;
+  tz: number;
+}
+
+let savedCamera: SavedCamera | null = null;
 
 function contentBounds(venue: Venue) {
   let minX = Infinity,
@@ -186,12 +200,15 @@ function buildOpeningMesh(wall: Wall, op: WallOpening): THREE.Object3D {
 
 export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const tool = useEditorStore((s) => s.tool);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const contentRef = useRef<THREE.Group | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const rafRef = useRef<number | null>(null);
+  const wallMeshesRef = useRef<THREE.Object3D[]>([]);
+  const downPosRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const container = containerRef.current!;
@@ -225,8 +242,25 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     controls.target.set(cx, 0, -cy);
     controls.enableDamping = true;
     controls.maxPolarAngle = Math.PI / 2.05;
+    if (savedCamera) {
+      camera.position.set(savedCamera.px, savedCamera.py, savedCamera.pz);
+      controls.target.set(savedCamera.tx, savedCamera.ty, savedCamera.tz);
+    }
     controls.update();
     controlsRef.current = controls;
+
+    const saveCamera = () => {
+      savedCamera = {
+        px: camera.position.x,
+        py: camera.position.y,
+        pz: camera.position.z,
+        tx: controls.target.x,
+        ty: controls.target.y,
+        tz: controls.target.z
+      };
+    };
+    controls.addEventListener("change", saveCamera);
+    saveCamera();
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.65));
     const dir = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -267,9 +301,52 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     });
     ro.observe(container);
 
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+
+    const onDown = (e: PointerEvent) => {
+      downPosRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const onUp = (e: PointerEvent) => {
+      const start = downPosRef.current;
+      downPosRef.current = null;
+      if (!start) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
+      const tool = useEditorStore.getState().tool;
+      if (tool !== "door" && tool !== "window") return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(wallMeshesRef.current, true);
+      if (hits.length === 0) return;
+      let o: THREE.Object3D | null = hits[0].object;
+      let wallId: string | undefined;
+      while (o && !wallId) {
+        wallId = o.userData.wallId as string | undefined;
+        o = o.parent;
+      }
+      if (!wallId) return;
+      const p = hits[0].point;
+      const world = { x: p.x, y: -p.z };
+      const wall = useEditorStore.getState().venue.walls.find((w) => w.id === wallId);
+      if (!wall) return;
+      const proj = projectPointOnSegment(world, wall.start, wall.end);
+      const opening = createOpening(tool, wall.id, proj.t, tool === "door" ? 1.0 : 1.2);
+      useEditorStore.getState().dispatch({ kind: "ADD_OPENING", opening });
+      useEditorStore.getState().setSelection([{ kind: "opening", id: opening.id, wallId: wall.id }]);
+    };
+
+    renderer.domElement.addEventListener("pointerdown", onDown);
+    renderer.domElement.addEventListener("pointerup", onUp);
+
     return () => {
       ro.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      controls.removeEventListener("change", saveCamera);
+      renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("pointerup", onUp);
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
@@ -286,6 +363,7 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     if (sceneRef.current) {
       scene.background = new THREE.Color(venue.background || "#0f1115");
     }
+    wallMeshesRef.current = [];
     while (content.children.length) {
       const c = content.children[0] as THREE.Mesh | THREE.Group;
       content.remove(c);
@@ -301,7 +379,10 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     }
     for (const w of venue.walls) {
       if (w.hidden) continue;
-      content.add(buildWallMesh(w));
+      const m = buildWallMesh(w);
+      m.userData.wallId = w.id;
+      wallMeshesRef.current.push(m);
+      content.add(m);
       for (const op of w.openings) {
         content.add(buildOpeningMesh(w, op));
       }
@@ -317,6 +398,8 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
       <div ref={containerRef} className="absolute inset-0" />
       <div className="absolute top-3 left-3 px-2 py-1 rounded bg-editor-panel/80 text-editor-muted text-xs pointer-events-none">
         3D Preview · drag to orbit, scroll to zoom
+        {tool === "door" && <div className="text-editor-accent">Click a wall to add a door</div>}
+        {tool === "window" && <div className="text-editor-accent">Click a wall to add a window</div>}
       </div>
     </div>
   );

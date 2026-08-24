@@ -17,12 +17,16 @@ const TOOLS: { tool: ToolType; icon: IconName; label: string; key?: string }[] =
   { tool: "measure", icon: "measure", label: "Measure", key: "M" }
 ];
 
-export const Toolbar: React.FC = () => {
+export const Toolbar: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
 
   return (
-    <div className="flex flex-col gap-1 p-2 bg-editor-panel border-r border-editor-border no-select">
+    <div
+      className={`flex flex-col gap-1 p-2 bg-editor-panel border-r border-editor-border no-select ${
+        disabled ? "pointer-events-none opacity-40" : ""
+      }`}
+    >
       {TOOLS.map((t) => {
         const active = tool === t.tool;
         return (

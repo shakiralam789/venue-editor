@@ -207,8 +207,8 @@ export default function Editor() {
     <div className="editor-root flex flex-col h-full w-full bg-editor-bg text-editor-text">
       <TopControls />
       <div className="flex flex-1 min-h-0">
-        <Toolbar />
-        <ObjectLibrary />
+        <Toolbar disabled={viewMode === "3d"} />
+        <ObjectLibrary disabled={viewMode === "3d"} />
         <div
           ref={containerRef}
           className="relative flex-1 min-w-0 overflow-hidden bg-editor-bg"

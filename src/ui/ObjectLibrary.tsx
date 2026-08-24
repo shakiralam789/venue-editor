@@ -16,7 +16,7 @@ const CATEGORY_ORDER: ObjectCategory[] = [
   "Custom"
 ];
 
-export const ObjectLibrary: React.FC = () => {
+export const ObjectLibrary: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
   const setActiveObjectType = useEditorStore((s) => s.setActiveObjectType);
   const setTool = useEditorStore((s) => s.setTool);
   const activeObjectType = useEditorStore((s) => s.activeObjectType);
@@ -27,7 +27,11 @@ export const ObjectLibrary: React.FC = () => {
   };
 
   return (
-    <div className="w-60 bg-editor-panel border-r border-editor-border flex flex-col no-select overflow-hidden">
+    <div
+      className={`w-60 bg-editor-panel border-r border-editor-border flex flex-col no-select overflow-hidden ${
+        disabled ? "pointer-events-none opacity-40" : ""
+      }`}
+    >
       <div className="px-3 py-3 border-b border-editor-border">
         <div className="text-xs uppercase tracking-wider text-editor-muted">Object Library</div>
         <div className="text-[11px] text-editor-muted mt-1">Click to arm, then click canvas — or drag onto the venue.</div>
@@ -47,8 +51,9 @@ export const ObjectLibrary: React.FC = () => {
                   return (
                     <button
                       key={def.id}
-                      draggable
+                      draggable={!disabled}
                       onDragStart={(e) => {
+                        if (disabled) return;
                         e.dataTransfer.setData("application/x-venue-object", def.type);
                         e.dataTransfer.effectAllowed = "copy";
                       }}
