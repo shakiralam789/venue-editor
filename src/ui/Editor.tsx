@@ -13,6 +13,8 @@ import { TopControls } from "@/ui/TopControls";
 import { ZoomControls } from "@/ui/ZoomControls";
 import { StatusBar } from "@/ui/StatusBar";
 import { Preview3D } from "@/ui/Preview3D";
+import { AssetManager } from "@/renderer/assets/AssetManager";
+import { ASSET_REGISTRY } from "@/renderer/assets/registry";
 
 const TOOL_KEYS: Record<string, any> = {
   v: "select",
@@ -62,6 +64,7 @@ export default function Editor() {
       renderer.fitToContent(ns.venue);
       ns.setCamera(renderer.camera);
       renderer.setSelection(ns.selection, ns.venue);
+      void AssetManager.preload(Object.keys(ASSET_REGISTRY));
       setReady(true);
     });
 

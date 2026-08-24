@@ -1,5 +1,7 @@
-import { Container, Graphics, Text } from "pixi.js";
+import { Container, Graphics, Text, Sprite, Texture } from "pixi.js";
 import type { VenueObject } from "@/model/types";
+import { assetIdForType } from "@/model/objectDefs";
+import { AssetManager } from "@/renderer/assets/AssetManager";
 
 const LABEL_FILL = 0xe6e9ef;
 
@@ -160,13 +162,57 @@ const TYPE_DRAW: Record<string, (g: Graphics, obj: VenueObject, w: number, h: nu
   custom: (g, obj, w, h) => baseFill(obj, g, w, h)
 };
 
-export function drawObjectView(container: Container, obj: VenueObject): void {
-  const w = obj.width;
-  const h = obj.height;
-  const g = getOrCreateChild(container, "shape", () => new Graphics());
+function drawFallback(g: Graphics, obj: VenueObject, w: number, h: number) {
   g.clear();
   const draw = TYPE_DRAW[obj.type] ?? ((gg: Graphics, o: VenueObject, ww: number, hh: number) => baseFill(o, gg, ww, hh));
   draw(g, obj, w, h);
+}
+
+export function drawObjectView(container: Container, obj: VenueObject): void {
+  const w = obj.width;
+  const h = obj.height;
+  const shape = getOrCreateChild(container, "shape", () => new Graphics());
+
+  const assetId = assetIdForType(obj.type);
+
+  if (assetId) {
+    let sprite = container.children.find((c) => c.label === "asset") as Sprite | undefined;
+    if (!sprite) {
+      sprite = new Sprite(Texture.EMPTY);
+      sprite.label = "asset";
+      sprite.anchor.set(0.5);
+      container.addChild(sprite);
+    }
+    const loaded = (sprite as unknown as { __assetId?: string }).__assetId === assetId && sprite.texture !== Texture.EMPTY;
+    if (loaded) {
+      sprite.width = w;
+      sprite.height = h;
+      sprite.visible = true;
+      shape.visible = false;
+    } else {
+      shape.visible = true;
+      drawFallback(shape, obj, w, h);
+      const target = sprite;
+      AssetManager.get(assetId)
+        .then((tex) => {
+          if (target.destroyed) return;
+          (target as unknown as { __assetId?: string }).__assetId = assetId;
+          target.texture = tex;
+          target.width = w;
+          target.height = h;
+          target.visible = true;
+          shape.visible = false;
+        })
+        .catch(() => {
+          /* keep geometric fallback */
+        });
+    }
+  } else {
+    const existing = container.children.find((c) => c.label === "asset") as Sprite | undefined;
+    if (existing) existing.destroy();
+    shape.visible = true;
+    drawFallback(shape, obj, w, h);
+  }
 
   container.position.set(obj.position.x, obj.position.y);
   container.rotation = (obj.rotation * Math.PI) / 180;

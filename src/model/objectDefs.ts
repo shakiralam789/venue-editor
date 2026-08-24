@@ -22,6 +22,8 @@ export interface ObjectDefinition {
   defaultStyle: ObjectStyle;
   properties?: Record<string, unknown>;
   threeD?: Object3DDefinition;
+  /** Optional 2D top-down asset used by the renderer instead of primitives. */
+  assetId?: string;
 }
 
 export const DEFAULT_STYLE: ObjectStyle = {
@@ -303,3 +305,29 @@ export const CATALOG_BY_CATEGORY: Record<ObjectCategory, ObjectDefinition[]> = O
   },
   {} as Record<ObjectCategory, ObjectDefinition[]>
 );
+
+/**
+ * Maps an object type to the reusable top-down asset it should render with.
+ * This is the single extension point for swapping/adding art: point a type at a
+ * new `assetId` registered in the asset registry without touching the renderer.
+ */
+export const TYPE_TO_ASSET: Partial<Record<ObjectType, string>> = {
+  chair: "chair-modern-01",
+  table: "table-round-01",
+  sofa: "sofa-01",
+  stage: "stage-01",
+  booth: "booth-01",
+  counter: "counter-01",
+  registration_desk: "registration-desk-01",
+  speaker: "speaker-01",
+  screen: "screen-01"
+};
+
+for (const def of OBJECT_DEFINITIONS) {
+  const assetId = TYPE_TO_ASSET[def.type];
+  if (assetId && !def.assetId) def.assetId = assetId;
+}
+
+export function assetIdForType(type: ObjectType): string | undefined {
+  return TYPE_TO_DEFINITION[type]?.assetId;
+}

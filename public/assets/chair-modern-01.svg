@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="seat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4a5a"/>
+      <stop offset="1" stop-color="#27323d"/>
+    </linearGradient>
+    <linearGradient id="back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#46586a"/>
+      <stop offset="1" stop-color="#2e3b47"/>
+    </linearGradient>
+    <radialGradient id="sh" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="62" cy="66" rx="46" ry="46" fill="url(#sh)"/>
+  <rect x="24" y="20" width="72" height="26" rx="10" fill="url(#back)"/>
+  <rect x="26" y="40" width="68" height="64" rx="12" fill="url(#seat)"/>
+  <rect x="32" y="46" width="56" height="52" rx="9" fill="#ffffff" opacity="0.06"/>
+  <circle cx="34" cy="48" r="4" fill="#1b232c"/>
+  <circle cx="86" cy="48" r="4" fill="#1b232c"/>
+  <circle cx="34" cy="96" r="4" fill="#1b232c"/>
+  <circle cx="86" cy="96" r="4" fill="#1b232c"/>
+</svg>

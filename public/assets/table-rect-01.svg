@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="90" viewBox="0 0 140 90">
+  <defs>
+    <linearGradient id="wood2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9824a"/>
+      <stop offset="1" stop-color="#8a5a30"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="120" height="74" rx="8" fill="#000000" opacity="0.2"/>
+  <rect x="10" y="8" width="120" height="74" rx="8" fill="url(#wood2)"/>
+  <rect x="10" y="8" width="120" height="74" rx="8" fill="none" stroke="#5e3c1e" stroke-width="3"/>
+  <rect x="20" y="16" width="100" height="58" rx="5" fill="#ffffff" opacity="0.06"/>
+</svg>
