@@ -168,7 +168,7 @@ function drawFallback(g: Graphics, obj: VenueObject, w: number, h: number) {
   draw(g, obj, w, h);
 }
 
-export function drawObjectView(container: Container, obj: VenueObject): void {
+export function drawObjectView(container: Container, obj: VenueObject, worldScale = 1): void {
   const w = obj.width;
   const h = obj.height;
   const shape = getOrCreateChild(container, "shape", () => new Graphics());
@@ -219,26 +219,8 @@ export function drawObjectView(container: Container, obj: VenueObject): void {
   container.alpha = obj.hidden ? 0.25 : 1;
   container.eventMode = "none";
 
-  const showLabel = obj.label && obj.label.length > 0;
-  if (showLabel) {
-    const label = getOrCreateChild(container, "label", () => new Text({ text: "", style: labelStyle() }));
-    label.text = obj.label ?? "";
-    const fontSize = Math.max(0.25, Math.min(w, h) * 0.22);
-    (label.style as any).fontSize = fontSize;
-    (label.style as any).fill = hex(obj.style.labelColor);
-    label.anchor.set(0.5);
-    label.position.set(0, 0);
-  } else {
-    const existing = container.children.find((c) => c.label === "label");
-    if (existing) existing.destroy();
-  }
-}
-
-function labelStyle() {
-  return {
-    fontFamily: "Inter, sans-serif",
-    fontSize: 0.3,
-    fill: LABEL_FILL,
-    align: "center" as const
-  };
+  const existing = container.children.find((c) => c.label === "label");
+  if (existing) existing.destroy();
+  const existingBg = container.children.find((c) => c.label === "labelBg");
+  if (existingBg) existingBg.destroy();
 }

@@ -196,7 +196,7 @@ export class PixiRenderer {
         this.objectLayer.addChild(c);
       }
       c.zIndex = obj.z;
-      drawObjectView(c, obj);
+      drawObjectView(c, obj, this.camera.scale);
     }
     for (const [id, c] of this.objectMap) {
       if (!seen.has(id)) {
@@ -237,7 +237,7 @@ export class PixiRenderer {
       this.objectLayer.addChild(c);
     }
     c.zIndex = obj.z;
-    drawObjectView(c, obj);
+    drawObjectView(c, obj, this.camera.scale);
   }
 
   syncWall(wall: Wall): void {
