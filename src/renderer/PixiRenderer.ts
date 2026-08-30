@@ -55,6 +55,12 @@ export class PixiRenderer {
     this.app.canvas.style.display = "block";
     this.app.canvas.style.touchAction = "none";
 
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      void import("@pixi/devtools").then(({ initDevtools }) => {
+        initDevtools({ app: this.app }).catch(() => undefined);
+      });
+    }
+
     this.app.stage.addChild(this.gridG);
     this.app.stage.addChild(this.worldContainer);
 
