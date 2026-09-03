@@ -323,12 +323,38 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
       if (!start) return;
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
       const tool = useEditorStore.getState().tool;
-      if (tool !== "door" && tool !== "window") return;
 
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
+
+      if (tool === "select") {
+        if (!contentRef.current) return;
+        const hits = raycaster.intersectObjects(contentRef.current.children, true);
+        if (hits.length === 0) {
+          useEditorStore.getState().clearSelection();
+          return;
+        }
+        let o: THREE.Object3D | null = hits[0].object;
+        let target: any = null;
+        while (o && !target) {
+          if (o.userData.objectId) target = { kind: "object", id: o.userData.objectId };
+          else if (o.userData.openingId && o.userData.wallId) target = { kind: "opening", id: o.userData.openingId, wallId: o.userData.wallId };
+          else if (o.userData.wallId) target = { kind: "wall", id: o.userData.wallId };
+          o = o.parent;
+        }
+        if (target) {
+          if (e.shiftKey) useEditorStore.getState().toggleSelection(target);
+          else useEditorStore.getState().setSelection([target]);
+        } else {
+          useEditorStore.getState().clearSelection();
+        }
+        return;
+      }
+
+      if (tool !== "door" && tool !== "window") return;
+
       const hits = raycaster.intersectObjects(wallMeshesRef.current, true);
       if (hits.length === 0) return;
       let o: THREE.Object3D | null = hits[0].object;
@@ -350,6 +376,7 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
 
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointerup", onUp);
+    renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
 
     return () => {
       ro.disconnect();
@@ -394,12 +421,17 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
       wallMeshesRef.current.push(m);
       content.add(m);
       for (const op of w.openings) {
-        content.add(buildOpeningMesh(w, op));
+        const om = buildOpeningMesh(w, op);
+        om.userData.openingId = op.id;
+        om.userData.wallId = w.id;
+        content.add(om);
       }
     }
     for (const o of venue.objects) {
       if (o.hidden) continue;
-      content.add(buildObjectMesh(o));
+      const om = buildObjectMesh(o);
+      om.userData.objectId = o.id;
+      content.add(om);
     }
   }, [venue]);
 
@@ -407,7 +439,7 @@ export const Preview3D: React.FC<{ venue: Venue }> = ({ venue }) => {
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       <div className="absolute top-3 left-3 px-2 py-1 rounded bg-editor-panel/80 text-editor-muted text-xs pointer-events-none">
-        3D Preview · drag to orbit, scroll to zoom
+        3D Preview · drag to orbit, right-click to pan, scroll to zoom
         {tool === "door" && <div className="text-editor-accent">Click a wall to add a door</div>}
         {tool === "window" && <div className="text-editor-accent">Click a wall to add a window</div>}
       </div>

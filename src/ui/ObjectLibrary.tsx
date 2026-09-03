@@ -17,6 +17,7 @@ const CATEGORY_ORDER: ObjectCategory[] = [
 ];
 
 export const ObjectLibrary: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
+
   const setActiveObjectType = useEditorStore((s) => s.setActiveObjectType);
   const setTool = useEditorStore((s) => s.setTool);
   const activeObjectType = useEditorStore((s) => s.activeObjectType);
@@ -25,7 +26,7 @@ export const ObjectLibrary: React.FC<{ disabled?: boolean }> = ({ disabled = fal
     setActiveObjectType(def.type);
     setTool("object");
   };
-
+  
   return (
     <div
       className={`w-60 bg-editor-panel border-r border-editor-border flex flex-col no-select overflow-hidden ${

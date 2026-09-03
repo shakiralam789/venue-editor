@@ -62,8 +62,8 @@ export function createWall(start: Vec2, end: Vec2, z = 0): Wall {
     id: createId("wall"),
     start: { ...start },
     end: { ...end },
-    thickness: 0.15,
-    height: 3,
+    thickness: 0.50,
+    height: 6,
     z,
     locked: false,
     hidden: false,
@@ -117,31 +117,88 @@ export function cloneObject(obj: VenueObject, offset: Vec2 = { x: 0.5, y: 0.5 })
 }
 
 export function createSampleVenue(): Venue {
-  const v = createVenue("Conference Hall A");
-  setZSeed(50);
-  const w1 = createWall({ x: -10, y: -7 }, { x: 10, y: -7 });
-  const w2 = createWall({ x: 10, y: -7 }, { x: 10, y: 7 });
-  const w3 = createWall({ x: 10, y: 7 }, { x: -10, y: 7 });
-  const w4 = createWall({ x: -10, y: 7 }, { x: -10, y: -7 });
-  w4.openings.push(createOpening("door", w4.id, 0.5, 1.4));
-  w1.openings.push(createOpening("window", w1.id, 0.5, 3));
+  const v = createVenue("Grand Expo Center");
+  setZSeed(300);
+  
+  // Bigger venue: 60x40
+  const w1 = createWall({ x: -30, y: -20 }, { x: 30, y: -20 });
+  const w2 = createWall({ x: 30, y: -20 }, { x: 30, y: 20 });
+  const w3 = createWall({ x: 30, y: 20 }, { x: -30, y: 20 });
+  const w4 = createWall({ x: -30, y: 20 }, { x: -30, y: -20 });
+  
+  // Entrances and exits
+  w4.openings.push(createOpening("door", w4.id, 0.3, 3));
+  w4.openings.push(createOpening("door", w4.id, 0.7, 3));
+  w2.openings.push(createOpening("door", w2.id, 0.5, 3)); 
+  w1.openings.push(createOpening("window", w1.id, 0.2, 8));
+  w1.openings.push(createOpening("window", w1.id, 0.5, 8));
+  w1.openings.push(createOpening("window", w1.id, 0.8, 8));
   v.walls.push(w1, w2, w3, w4);
 
-  const stage = createObject("stage", { x: 0, y: -4.5 }, { width: 8, height: 3, label: "Main Stage" });
+  // Main Stage
+  const stage = createObject("stage", { x: 0, y: -15 }, { width: 16, height: 6, label: "Main Stage" });
   v.objects.push(stage);
 
-  for (let i = 0; i < 6; i++) {
-    const booth = createObject("booth", { x: -8 + i * 3, y: 2 }, { label: `B${i + 1}` });
-    (booth.properties as Record<string, unknown>).boothNumber = String(i + 1);
-    v.objects.push(booth);
+  // Screen behind stage
+  const screen = createObject("screen", { x: 0, y: -17.5 }, { width: 12, height: 0.5, label: "LED Wall" });
+  v.objects.push(screen);
+
+  // Speaker area (lectern)
+  const lectern = createObject("counter", { x: -3, y: -13 }, { width: 1.5, height: 0.8, label: "Lectern" });
+  v.objects.push(lectern);
+
+  // VIP Zone
+  const vipZone = createObject("zone", { x: -22, y: -12 }, { width: 14, height: 12, label: "VIP Area", z: 0 });
+  (vipZone.properties as Record<string, unknown>).zoneType = "VIP";
+  v.objects.push(vipZone);
+
+  // VIP seating (Tables and Chairs)
+  for (let i = 0; i < 4; i++) {
+    const tx = -24 + (i % 2) * 5;
+    const ty = -14 + Math.floor(i / 2) * 5;
+    const vt = createObject("table", { x: tx, y: ty }, { label: `VIP T${i+1}` });
+    v.objects.push(vt);
+    v.objects.push(createObject("chair", { x: tx, y: ty - 1.2 }, { rotation: 0 }));
+    v.objects.push(createObject("chair", { x: tx, y: ty + 1.2 }, { rotation: 180 }));
+    v.objects.push(createObject("chair", { x: tx - 1.2, y: ty }, { rotation: -90 }));
+    v.objects.push(createObject("chair", { x: tx + 1.2, y: ty }, { rotation: 90 }));
   }
-  const table = createObject("table", { x: 0, y: 5 }, { label: "VIP Table" });
-  v.objects.push(table);
-  const chairN = createObject("chair", { x: 0, y: 4.2 }, {});
-  v.objects.push(chairN);
-  const zone = createObject("zone", { x: 0, y: 0.5 }, { width: 14, height: 5, label: "Exhibit Floor", z: 0 });
-  (zone.properties as Record<string, unknown>).zoneType = "General";
-  v.objects.push(zone);
+
+  // General Seating Array
+  const seatingZone = createObject("zone", { x: 0, y: -3 }, { width: 24, height: 12, label: "Audience Seating", z: 0 });
+  v.objects.push(seatingZone);
+  for (let r = 0; r < 6; r++) {
+    for (let c = 0; c < 14; c++) {
+      const chair = createObject("chair", { x: -9.75 + c * 1.5, y: -7.5 + r * 1.5 }, { label: `Row ${r+1} Seat ${c+1}` });
+      v.objects.push(chair);
+    }
+  }
+
+  // Exhibit Hall (Booths)
+  const exhibitZone = createObject("zone", { x: 0, y: 12 }, { width: 56, height: 14, label: "Exhibit Hall", z: 0 });
+  v.objects.push(exhibitZone);
+  
+  let boothNum = 1;
+  for (let r = 0; r < 2; r++) {
+    for (let i = 0; i < 16; i++) {
+      const booth = createObject("booth", { x: -22.5 + i * 3, y: 9 + r * 6 }, { label: `B${boothNum}` });
+      (booth.properties as Record<string, unknown>).boothNumber = String(boothNum);
+      v.objects.push(booth);
+      boothNum++;
+    }
+  }
+
+  // Food Area
+  const foodZone = createObject("food_area", { x: 22, y: -12 }, { width: 14, height: 12, label: "Catering", z: 0 });
+  v.objects.push(foodZone);
+  const foodCounter1 = createObject("counter", { x: 22, y: -16 }, { width: 6, height: 1, label: "Buffet" });
+  const foodCounter2 = createObject("counter", { x: 27, y: -12 }, { width: 1, height: 6, label: "Drinks" });
+  v.objects.push(foodCounter1, foodCounter2);
+
+  // Aisles
+  const aisle = createObject("aisle", { x: 0, y: 4.5 }, { width: 58, height: 2, label: "Main Aisle", z: 1 });
+  v.objects.push(aisle);
+
   setZSeed(0);
   return v;
 }
